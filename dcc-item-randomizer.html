@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeon Loot Randomizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121316;
+    --panel: #1b1c20;
+    --panel-alt: #202227;
+    --border: #33353c;
+    --border-soft: #26272c;
+    --text: #ededef;
+    --text-muted: #9b9da6;
+    --accent: #7cff5b;
+    --accent-dark: #274d1b;
+    --hazard: #f2c94c;
+    --danger: #ff5b5b;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.5;
+  }
+
+  .app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-size: 44px;
+    letter-spacing: 0.5px;
+    margin: 0 0 6px;
+    line-height: 1;
+  }
+
+  .masthead .tagline {
+    color: var(--text-muted);
+    margin: 0 0 28px;
+    font-size: 15px;
+    max-width: 60ch;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 4px;
+    margin-right: 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tab-btn.active {
+    color: var(--text);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---- Roll tab ---- */
+  .roll-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 700px) {
+    .roll-grid { grid-template-columns: 1fr; }
+  }
+
+  .control-panel, .result-panel .result-empty, .result-card, .wb-card, .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .control-panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-self: start;
+  }
+
+  .control-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  select, input[type="text"] {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 9px 10px;
+    border-radius: 6px;
+  }
+
+  select:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0d1a08;
+    border: none;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover { filter: brightness(1.08); }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .btn-ghost:hover { border-color: var(--text-muted); }
+
+  .form-error {
+    color: var(--danger);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .result-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .result-card {
+    padding: 24px;
+    animation: reveal 0.25s ease-out;
+  }
+
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--rc, var(--text-muted));
+    color: var(--rc, var(--text-muted));
+  }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  #result-name {
+    font-family: var(--font-display);
+    font-size: 30px;
+    letter-spacing: 0.3px;
+    margin: 0 0 18px;
+    line-height: 1.15;
+  }
+
+  .result-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+    margin: 0 0 18px;
+  }
+
+  .result-meta > div { min-width: 0; }
+
+  .result-meta dt {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+
+  .result-meta dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    word-break: break-word;
+  }
+
+  /* ---- History tab ---- */
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .panel-header h2 {
+    font-family: var(--font-display);
+    font-size: 24px;
+    margin: 0;
+    letter-spacing: 0.3px;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+  }
+
+  th {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  td.name-cell, td.bonus-cell, td.unique-cell { white-space: normal; }
+
+  .empty-note {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 14px;
+  }
+
+  /* ---- Word banks tab ---- */
+  .wb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .wb-card { padding: 18px; }
+
+  .wb-card h3 {
+    font-size: 15px;
+    margin: 0 0 12px;
+  }
+
+  .wb-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .wb-form input { flex: 1; min-width: 0; }
+
+  .wb-form button {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .chip-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 6px 4px 10px;
+    font-size: 12px;
+  }
+
+  .chip-item button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px;
+  }
+
+  .chip-item button:hover { color: var(--danger); }
+
+  .players-card { padding: 18px; }
+
+  .player-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .player-form button {
+    grid-column: 1 / -1;
+    background: var(--accent);
+    color: #0d1a08;
+    border: none;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .players-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .player-row .player-name { font-weight: 600; font-size: 14px; }
+
+  .player-row .player-details {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .player-row button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .player-row button:hover { color: var(--danger); border-color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <h1>Dungeon loot randomizer</h1>
+    <p class="tagline">Rolls an item off your table's Weapon, Clothing, Accessory and Consumable rules, then names it from your own word banks. Everything here lives only in this browser.</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="roll">Roll</button>
+    <button class="tab-btn" data-tab="history">History</button>
+    <button class="tab-btn" data-tab="wordbanks">Word banks</button>
+  </nav>
+
+  <section id="panel-roll" class="tab-panel active">
+    <div class="roll-grid">
+      <div class="control-panel">
+        <label>Rarity tier
+          <select id="rarity-select">
+            <option value="">Choose rarity…</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+            <option value="Platinum">Platinum</option>
+            <option value="Legendary">Legendary</option>
+            <option value="Celestial">Celestial</option>
+          </select>
+        </label>
+        <label>Category
+          <select id="category-select">
+            <option value="Random">Random</option>
+            <option value="Weapon">Weapon</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Accessory">Accessory</option>
+            <option value="Consumable">Consumable</option>
+          </select>
+        </label>
+        <label>Player (optional)
+          <select id="player-select">
+            <option value="">No player — generic</option>
+          </select>
+        </label>
+        <button id="generate-btn" class="btn-primary">Generate item</button>
+        <p id="form-error" class="form-error" hidden></p>
+      </div>
+
+      <div class="result-panel">
+        <div id="result-empty" class="result-empty">Pick your settings and generate an item.</div>
+        <article id="result-card" class="result-card" hidden>
+          <div class="result-top">
+            <span id="result-rarity" class="badge"></span>
+            <span id="result-category" class="chip"></span>
+          </div>
+          <h2 id="result-name"></h2>
+          <dl class="result-meta">
+            <div><dt>Roll type</dt><dd id="result-rolltype"></dd></div>
+            <div><dt>Bonus</dt><dd id="result-bonus"></dd></div>
+            <div><dt>Unique</dt><dd id="result-unique"></dd></div>
+            <div><dt>Player</dt><dd id="result-player"></dd></div>
+          </dl>
+          <button id="copy-btn" class="btn-ghost">Copy name</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-history" class="tab-panel">
+    <div class="panel-header">
+      <h2>Roll history</h2>
+      <button id="clear-history-btn" class="btn-ghost">Clear history</button>
+    </div>
+    <div class="table-wrap">
+      <table id="history-table">
+        <thead>
+          <tr>
+            <th>Rarity</th><th>Category</th><th>Player</th><th>Roll type</th><th>Bonus</th><th>Unique</th><th>Name</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+    <p id="history-empty" class="empty-note">No items generated yet.</p>
+  </section>
+
+  <section id="panel-wordbanks" class="tab-panel">
+    <div class="wb-grid">
+      <div class="wb-card">
+        <h3>Weapon nouns</h3>
+        <form class="wb-form" data-noun-category="Weapon">
+          <input type="text" placeholder="e.g. Blade" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="nouns-Weapon"></ul>
+      </div>
+      <div class="wb-card">
+        <h3>Clothing nouns</h3>
+        <form class="wb-form" data-noun-category="Clothing">
+          <input type="text" placeholder="e.g. Cloak" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="nouns-Clothing"></ul>
+      </div>
+      <div class="wb-card">
+        <h3>Accessory nouns</h3>
+        <form class="wb-form" data-noun-category="Accessory">
+          <input type="text" placeholder="e.g. Ring" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="nouns-Accessory"></ul>
+      </div>
+      <div class="wb-card">
+        <h3>Consumable nouns</h3>
+        <form class="wb-form" data-noun-category="Consumable">
+          <input type="text" placeholder="e.g. Vial" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="nouns-Consumable"></ul>
+      </div>
+      <div class="wb-card">
+        <h3>Adjectives</h3>
+        <form class="wb-form" id="form-adjective">
+          <input type="text" placeholder="e.g. Psychotic" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="adjectives-list"></ul>
+      </div>
+      <div class="wb-card">
+        <h3>Creators / mobs / deities / bosses</h3>
+        <form class="wb-form" id="form-creator">
+          <input type="text" placeholder="e.g. Bugaboo" required>
+          <button type="submit">Add</button>
+        </form>
+        <ul class="chip-list" id="creators-list"></ul>
+      </div>
+    </div>
+
+    <div class="wb-card players-card">
+      <h3>Players</h3>
+      <form id="form-player" class="player-form">
+        <input type="text" id="player-name-input" placeholder="Player name" required>
+        <input type="text" id="player-stats-input" placeholder="Key stats (comma-separated)">
+        <input type="text" id="player-skills-input" placeholder="Key skills (comma-separated)">
+        <input type="text" id="player-spells-input" placeholder="Key spells (comma-separated)">
+        <button type="submit">Add player</button>
+      </form>
+      <ul id="players-list" class="players-list"></ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // ==================== Rules data ====================
+  const RARITY_TABLE = {
+    Silver:    { skillMin: 1, skillMax: 1, statMin: 2,  statMax: 2,  statPct: false, prefix: false, color: '#C7CCD1' },
+    Gold:      { skillMin: 1, skillMax: 3, statMin: 3,  statMax: 5,  statPct: false, prefix: true,  color: '#E8B84B' },
+    Platinum:  { skillMin: 2, skillMax: 4, statMin: 5,  statMax: 5,  statPct: true,  prefix: true,  color: '#8FE3DD' },
+    Legendary: { skillMin: 5, skillMax: 5, statMin: 10, statMax: 10, statPct: true,  prefix: true,  color: '#FF7A45' },
+    Celestial: { skillMin: 6, skillMax: 6, statMin: 20, statMax: 20, statPct: true,  prefix: true,  color: '#B98CFF' }
+  };
+
+  const CATEGORIES = ['Weapon', 'Clothing', 'Accessory', 'Consumable'];
+
+  const TABLE_WEAPON     = { 1: 'stat', 2: 'skill', 3: 'buff', 4: 'passiveSkill',   5: 'spell', 6: 'unique' };
+  const TABLE_CLOTHING   = { 1: 'stat', 2: 'skill', 3: 'buff', 4: 'resistUncommon', 5: 'damageResist', 6: 'unique' };
+  const TABLE_ACCESSORY  = { 1: 'stat', 2: 'skill', 3: 'buff', 4: 'externalBuff',   5: 'spell', 6: 'unique' };
+  const TABLE_CONSUMABLE = { 1: 'stat', 2: 'skill', 3: 'buff', 4: 'externalBuff',   5: 'spell', 6: 'unique' };
+
+  const TABLE_UNIQUE = {
+    1: "GM's choice",
+    2: 'Interacts with a god',
+    3: 'The item is intelligent',
+    4: 'Summons minions to fight for you',
+    5: 'Mimics something from the encounter where the loot box was earned',
+    6: "Player's choice (with GM approval)"
+  };
+
+  const ROLL_LABELS = {
+    stat: 'Stat bonus', skill: 'Skill bonus', buff: 'Buff', passiveSkill: 'Passive skill',
+    spell: 'Inherent spell', resistUncommon: 'Resistance (uncommon type)', damageResist: 'Damage resistance',
+    externalBuff: 'External buff', unique: 'Something unique'
+  };
+
+  // ==================== State ====================
+  let wordbanks = { nouns: { Weapon: [], Clothing: [], Accessory: [], Consumable: [] }, adjectives: [], creators: [] };
+  let players = [];
+  let history = [];
+
+  // ==================== Persistence ====================
+  function load() {
+    try { wordbanks = JSON.parse(localStorage.getItem('dcc_wordbanks')) || wordbanks; } catch (e) {}
+    try { players = JSON.parse(localStorage.getItem('dcc_players')) || []; } catch (e) {}
+    try { history = JSON.parse(localStorage.getItem('dcc_history')) || []; } catch (e) {}
+  }
+  function saveWordbanks() { localStorage.setItem('dcc_wordbanks', JSON.stringify(wordbanks)); }
+  function savePlayers() { localStorage.setItem('dcc_players', JSON.stringify(players)); }
+  function saveHistory() { localStorage.setItem('dcc_history', JSON.stringify(history)); }
+
+  // ==================== Dice helpers ====================
+  function roll(sides) { return Math.floor(Math.random() * sides) + 1; }
+  function randBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function blank(v) { return (v === null || v === undefined || v === '') ? 'N/A' : v; }
+
+  // ==================== Bonus text ====================
+  function buildBonusText(rollType, tier, playerLists) {
+    switch (rollType) {
+      case 'stat': {
+        const val = tier.statMin === tier.statMax ? tier.statMin : randBetween(tier.statMin, tier.statMax);
+        const unit = tier.statPct ? '%' : '';
+        const statName = playerLists.stats.length ? pickRandom(playerLists.stats) : '[choose stat]';
+        return `+${val}${unit} ${statName}`;
+      }
+      case 'skill': {
+        const val = tier.skillMin === tier.skillMax ? tier.skillMin : randBetween(tier.skillMin, tier.skillMax);
+        const skillName = playerLists.skills.length ? pickRandom(playerLists.skills) : '[choose skill]';
+        return `+${val} Skill Rank: ${skillName}`;
+      }
+      case 'buff':
+        return 'A buff (not Skill or Stat) — [GM defines]';
+      case 'passiveSkill': {
+        const skillName = playerLists.skills.length ? pickRandom(playerLists.skills) : '[choose skill]';
+        return `Passive skill at Rank equal to the floor — ${skillName}`;
+      }
+      case 'spell': {
+        const spellName = playerLists.spells.length ? pickRandom(playerLists.spells) : '[GM defines spell]';
+        return `Inherent spell (no mana cost, cooldown based on spell power) — ${spellName}`;
+      }
+      case 'resistUncommon':
+        return 'Resistance to an uncommon damage type — [GM defines type]';
+      case 'damageResist':
+        return '+1 Damage Resistance';
+      case 'externalBuff':
+        return pickRandom(['Recovery (full Health) once per Floor', 'Restore (full Mana) once per Floor']);
+      default:
+        return '';
+    }
+  }
+
+  // ==================== Generate ====================
+  function generateItem() {
+    const rarity = document.getElementById('rarity-select').value;
+    const errorEl = document.getElementById('form-error');
+    if (!RARITY_TABLE[rarity]) {
+      errorEl.textContent = 'Pick a rarity tier first.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+    const tier = RARITY_TABLE[rarity];
+
+    const categorySelection = document.getElementById('category-select').value;
+    const category = CATEGORIES.includes(categorySelection) ? categorySelection : CATEGORIES[roll(4) - 1];
+
+    const subRoll = roll(6);
+    let rollType;
+    if (category === 'Weapon') rollType = TABLE_WEAPON[subRoll];
+    else if (category === 'Clothing') rollType = TABLE_CLOTHING[subRoll];
+    else if (category === 'Accessory') rollType = TABLE_ACCESSORY[subRoll];
+    else rollType = TABLE_CONSUMABLE[subRoll];
+
+    const playerName = document.getElementById('player-select').value;
+    const playerObj = players.find(p => p.name === playerName);
+    const playerLists = playerObj ? playerObj : { stats: [], skills: [], spells: [] };
+
+    let bonusText = buildBonusText(rollType, tier, playerLists);
+    let uniqueText = '';
+    if (rollType === 'unique') {
+      uniqueText = TABLE_UNIQUE[roll(6)];
+      bonusText = 'Something Unique (see note)';
+    }
+
+    const nouns = wordbanks.nouns[category] || [];
+    const noun = nouns.length ? pickRandom(nouns) : `[add ${category} nouns in Word Banks]`;
+    const adjective = wordbanks.adjectives.length ? pickRandom(wordbanks.adjectives) : '[add adjectives]';
+    const creator = wordbanks.creators.length ? pickRandom(wordbanks.creators) : '[add creators]';
+
+    const name = tier.prefix ? `Enchanted ${noun} of the ${adjective} ${creator}` : `${noun} of ${creator}`;
+
+    const entry = {
+      rarity, category, player: blank(playerName),
+      rollType: ROLL_LABELS[rollType] || rollType,
+      bonus: bonusText, unique: blank(uniqueText), name, color: tier.color
+    };
+
+    renderResult(entry);
+    history.unshift(entry);
+    if (history.length > 200) history = history.slice(0, 200);
+    saveHistory();
+    renderHistory();
+  }
+
+  // ==================== Render: result ====================
+  function renderResult(entry) {
+    document.getElementById('result-empty').hidden = true;
+    const card = document.getElementById('result-card');
+    card.hidden = false;
+    card.style.animation = 'none';
+    void card.offsetWidth;
+    card.style.animation = '';
+
+    const rarityBadge = document.getElementById('result-rarity');
+    rarityBadge.textContent = entry.rarity;
+    rarityBadge.style.setProperty('--rc', entry.color);
+
+    document.getElementById('result-category').textContent = entry.category;
+    document.getElementById('result-name').textContent = entry.name;
+    document.getElementById('result-rolltype').textContent = entry.rollType;
+    document.getElementById('result-bonus').textContent = entry.bonus;
+    document.getElementById('result-unique').textContent = entry.unique;
+    document.getElementById('result-player').textContent = entry.player;
+  }
+
+  // ==================== Render: history ====================
+  function renderHistory() {
+    const body = document.getElementById('history-body');
+    body.innerHTML = '';
+    document.getElementById('history-empty').hidden = history.length > 0;
+    history.forEach(entry => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(entry.rarity)}</td>
+        <td>${escapeHtml(entry.category)}</td>
+        <td>${escapeHtml(entry.player)}</td>
+        <td>${escapeHtml(entry.rollType)}</td>
+        <td class="bonus-cell">${escapeHtml(entry.bonus)}</td>
+        <td class="unique-cell">${escapeHtml(entry.unique)}</td>
+        <td class="name-cell">${escapeHtml(entry.name)}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ==================== Render: word banks ====================
+  function renderNounList(category) {
+    const list = document.getElementById(`nouns-${category}`);
+    list.innerHTML = '';
+    wordbanks.nouns[category].forEach((word, idx) => {
+      list.appendChild(chipEl(word, () => {
+        wordbanks.nouns[category].splice(idx, 1);
+        saveWordbanks();
+        renderNounList(category);
+      }));
+    });
+  }
+
+  function renderAdjectives() {
+    const list = document.getElementById('adjectives-list');
+    list.innerHTML = '';
+    wordbanks.adjectives.forEach((word, idx) => {
+      list.appendChild(chipEl(word, () => {
+        wordbanks.adjectives.splice(idx, 1);
+        saveWordbanks();
+        renderAdjectives();
+      }));
+    });
+  }
+
+  function renderCreators() {
+    const list = document.getElementById('creators-list');
+    list.innerHTML = '';
+    wordbanks.creators.forEach((word, idx) => {
+      list.appendChild(chipEl(word, () => {
+        wordbanks.creators.splice(idx, 1);
+        saveWordbanks();
+        renderCreators();
+      }));
+    });
+  }
+
+  function chipEl(word, onRemove) {
+    const li = document.createElement('li');
+    li.className = 'chip-item';
+    const span = document.createElement('span');
+    span.textContent = word;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.setAttribute('aria-label', `Remove ${word}`);
+    btn.addEventListener('click', onRemove);
+    li.appendChild(span);
+    li.appendChild(btn);
+    return li;
+  }
+
+  // ==================== Render: players ====================
+  function renderPlayers() {
+    const list = document.getElementById('players-list');
+    list.innerHTML = '';
+    players.forEach((p, idx) => {
+      const li = document.createElement('li');
+      li.className = 'player-row';
+      li.innerHTML = `
+        <div>
+          <div class="player-name">${escapeHtml(p.name)}</div>
+          <div class="player-details">Stats: ${escapeHtml(p.stats.join(', ') || '—')} · Skills: ${escapeHtml(p.skills.join(', ') || '—')} · Spells: ${escapeHtml(p.spells.join(', ') || '—')}</div>
+        </div>
+      `;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Remove';
+      btn.addEventListener('click', () => {
+        players.splice(idx, 1);
+        savePlayers();
+        renderPlayers();
+        renderPlayerSelect();
+      });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  function renderPlayerSelect() {
+    const select = document.getElementById('player-select');
+    const current = select.value;
+    select.innerHTML = '<option value="">No player — generic</option>';
+    players.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+    if (players.some(p => p.name === current)) select.value = current;
+  }
+
+  function splitList(str) {
+    return str.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  // ==================== Wiring ====================
+  document.addEventListener('DOMContentLoaded', () => {
+    load();
+    CATEGORIES.forEach(renderNounList);
+    renderAdjectives();
+    renderCreators();
+    renderPlayers();
+    renderPlayerSelect();
+    renderHistory();
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    // Generate
+    document.getElementById('generate-btn').addEventListener('click', generateItem);
+
+    // Copy name
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const name = document.getElementById('result-name').textContent;
+      const btn = document.getElementById('copy-btn');
+      navigator.clipboard.writeText(name).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      }).catch(() => {});
+    });
+
+    // Clear history (two-step confirm)
+    const clearBtn = document.getElementById('clear-history-btn');
+    let confirming = false;
+    let confirmTimeout;
+    clearBtn.addEventListener('click', () => {
+      if (!confirming) {
+        confirming = true;
+        clearBtn.textContent = 'Click to confirm';
+        confirmTimeout = setTimeout(() => {
+          confirming = false;
+          clearBtn.textContent = 'Clear history';
+        }, 3000);
+      } else {
+        clearTimeout(confirmTimeout);
+        confirming = false;
+        clearBtn.textContent = 'Clear history';
+        history = [];
+        saveHistory();
+        renderHistory();
+      }
+    });
+
+    // Noun forms
+    document.querySelectorAll('.wb-form[data-noun-category]').forEach(form => {
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const category = form.dataset.nounCategory;
+        const input = form.querySelector('input');
+        const value = input.value.trim();
+        if (!value) return;
+        wordbanks.nouns[category].push(value);
+        saveWordbanks();
+        renderNounList(category);
+        input.value = '';
+      });
+    });
+
+    // Adjective form
+    document.getElementById('form-adjective').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = e.target.querySelector('input');
+      const value = input.value.trim();
+      if (!value) return;
+      wordbanks.adjectives.push(value);
+      saveWordbanks();
+      renderAdjectives();
+      input.value = '';
+    });
+
+    // Creator form
+    document.getElementById('form-creator').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = e.target.querySelector('input');
+      const value = input.value.trim();
+      if (!value) return;
+      wordbanks.creators.push(value);
+      saveWordbanks();
+      renderCreators();
+      input.value = '';
+    });
+
+    // Player form
+    document.getElementById('form-player').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = document.getElementById('player-name-input').value.trim();
+      if (!name) return;
+      const stats = splitList(document.getElementById('player-stats-input').value);
+      const skills = splitList(document.getElementById('player-skills-input').value);
+      const spells = splitList(document.getElementById('player-spells-input').value);
+      players.push({ name, stats, skills, spells });
+      savePlayers();
+      renderPlayers();
+      renderPlayerSelect();
+      e.target.reset();
+    });
+  });
+</script>
+</body>
+</html>
